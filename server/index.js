@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const { fork } = require('child_process');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -29,6 +31,20 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Horizon running on http://localhost:${PORT}`);
-});
+// Auto-seed if DB doesn't exist (handles ephemeral SQLite on free hosting)
+const dbPath = path.join(__dirname, '..', 'data', 'horizon.db');
+
+function startServer() {
+  app.listen(PORT, () => {
+    console.log(`Horizon running on http://localhost:${PORT}`);
+  });
+}
+
+if (!fs.existsSync(dbPath)) {
+  console.log('No database found, running seed...');
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  const seedProcess = fork(path.join(__dirname, 'seed.js'));
+  seedProcess.on('exit', () => { console.log('Seed complete'); startServer(); });
+} else {
+  startServer();
+}
