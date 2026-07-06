@@ -2,6 +2,9 @@
   "name": "luxe-store",
   "version": "1.0.0",
   "description": "Premium e-commerce platform",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server/index.js",
     "server": "node server/index.js",
@@ -9,8 +12,9 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "install-all": "npm install && cd client && npm install",
     "seed": "node server/seed.js",
-    "build": "cd client && npm run build",
-    "railway-build": "npm install && cd client && npm install && npm run build"
+    "build": "npm --prefix client install && npm --prefix client run build",
+    "railway-build": "npm install && npm --prefix client install && npm run build",
+    "render-build": "npm --prefix client install && npm --prefix client run build"
   },
   "dependencies": {
     "concurrently": "^9.1.2",
