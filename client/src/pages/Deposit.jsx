@@ -8,9 +8,10 @@ const paymentMethods = [
 ]
 
 export default function Deposit() {
-  const { user } = useAuth()
+  const { user, token, logout } = useAuth()
   const navigate = useNavigate()
   const [profile, setProfile] = useState(null)
+  const [pendingDeposits, setPendingDeposits] = useState([])
   const [amount, setAmount] = useState('')
   const [selectedMethod, setSelectedMethod] = useState('crypto')
   const [loading, setLoading] = useState(false)
@@ -19,27 +20,32 @@ export default function Deposit() {
 
   useEffect(() => {
     if (!user) { navigate('/login'); return }
-    const uid = user.id || user.token
+    const uid = token || user?.id
     if (uid) {
-      fetch(`/api/users/${uid}`).then(r => r.json()).then(setProfile).catch(() => {})
+      fetch(`/api/users/${uid}`).then(r => { if (!r.ok) throw new Error('Not found'); return r.json() }).then(p => { setProfile(p) }).catch(() => { logout(); navigate('/login') })
+      fetch(`/api/users/${uid}/deposits?status=pending`).then(r => r.json()).then(setPendingDeposits).catch(() => {})
     }
-  }, [user, navigate])
+  }, [user, navigate, token, logout])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!amount || parseFloat(amount) <= 0) return
     setError('')
     setLoading(true)
-    const uid = user?.id || user?.token
+    const uid = token || user?.id
     try {
       const res = await fetch(`/api/users/${uid}/wallet`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: parseFloat(amount), paymentMethod: selectedMethod })
       })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setError(d.error || 'Request failed. Please try again.')
+        return
+      }
       const data = await res.json()
-      if (data.error) setError(data.error)
-      else if (data.depositId) {
+      if (data.depositId) {
         if (selectedMethod === 'crypto') navigate(`/crypto-payment/${data.depositId}`)
         else if (selectedMethod === 'gift_card') navigate(`/gift-card-payment/${data.depositId}`)
         else setConfirmed(true)
@@ -56,6 +62,8 @@ export default function Deposit() {
       <div className="w-8 h-8 border-2 border-horizon-600 border-t-transparent rounded-full animate-spin" />
     </div>
   )
+
+  const stepLabels = selectedMethod === 'crypto' ? ['Enter Amount', 'Select Crypto', 'Send Payment', 'Admin Approval'] : ['Enter Amount', 'Select Method', 'Send Gift Card', 'Admin Approval']
 
   return (
     <div className="min-h-screen py-16 px-4">
@@ -113,6 +121,7 @@ export default function Deposit() {
                   </div>
                   <div className="flex-1 text-left">
                     <p className={`text-sm font-medium ${selectedMethod === method.id ? 'text-midnight-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>{method.label}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{method.id === 'crypto' ? 'BTC, ETH, or USDT. Fast & secure.' : 'Code or image upload. Quick review.'}</p>
                   </div>
                   {method.recommended && (
                     <span className="badge-success text-[10px]">Recommended</span>
@@ -133,6 +142,23 @@ export default function Deposit() {
             {loading ? 'Processing...' : `Deposit ${amount ? `$${parseFloat(amount || 0).toFixed(2)}` : ''}`}
           </button>
         </form>
+
+        {pendingDeposits.length > 0 && (
+          <div className="glass-card p-6 mt-8">
+            <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Pending Deposits</h3>
+            <div className="space-y-3">
+              {pendingDeposits.map(d => (
+                <div key={d.id} className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/10 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-midnight-900 dark:text-white">${Number(d.amount).toFixed(2)}</p>
+                    <p className="text-xs text-gray-400">{d.paymentMethod} &middot; {new Date(d.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">{d.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

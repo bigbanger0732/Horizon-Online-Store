@@ -140,6 +140,18 @@ router.put('/:id/password', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Get user's deposits
+router.get('/:id/deposits', async (req, res) => {
+  try {
+    const db = await init();
+    const { status } = req.query;
+    let deposits;
+    if (status) deposits = db.prepare('SELECT * FROM deposits WHERE userId = ? AND status = ? ORDER BY createdAt DESC').all(req.params.id, status);
+    else deposits = db.prepare('SELECT * FROM deposits WHERE userId = ? ORDER BY createdAt DESC').all(req.params.id);
+    res.json(deposits);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;

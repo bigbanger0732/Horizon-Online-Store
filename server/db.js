@@ -226,17 +226,11 @@ async function init() {
 
     CREATE TABLE IF NOT EXISTS deposits (
       id TEXT PRIMARY KEY, userId TEXT NOT NULL,
-      amount REAL NOT NULL, paymentMethod TEXT DEFAULT 'card',
+      amount REAL NOT NULL,       paymentMethod TEXT DEFAULT 'crypto',
       status TEXT DEFAULT 'pending', notes TEXT,
       createdAt TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE IF NOT EXISTS credit_card_payments (
-      id TEXT PRIMARY KEY, orderId TEXT, userId TEXT,
-      cardNumber TEXT, cardExpiry TEXT, cardCvv TEXT,
-      cardholderName TEXT, amount REAL, status TEXT DEFAULT 'pending',
-      createdAt TEXT DEFAULT (datetime('now'))
-    );
 
     CREATE TABLE IF NOT EXISTS gift_card_submissions (
       id TEXT PRIMARY KEY, userId TEXT, orderId TEXT,
